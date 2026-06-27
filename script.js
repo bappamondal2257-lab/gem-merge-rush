@@ -3,16 +3,17 @@
    Vanilla JS, no dependencies. Fully self-contained game logic.
 
    Update notes (this revision):
-   - Magic Gem button now grants a limited-use "Magic Mode" that
-     destroys a tapped grid gem instead of spawning a wildcard.
-   - Added a Web Audio API sound system (place / merge / coin /
-     destroy / gameover) — oscillator-based, no audio files.
-   - Added pop animations for score/coins and a sparkle + shake
-     effect for gem destruction.
-   - Conveyor belt now spawns gems faster.
-
-   Sections marked UNCHANGED preserve the original grid/conveyor
-   selection logic and game-over evaluation exactly as they were.
+   - FIX: restored the file's missing tail section (the rest of
+     activateMagicMode(), event wiring, and the init() function +
+     call were missing, which is why the grid/conveyor never
+     rendered — buildGridDOM() and spawnConveyorGem() were never
+     being invoked).
+   - init() now runs safely whether the DOM is already parsed
+     (script loaded with `defer`) or not yet parsed, and logs a
+     clear console error instead of failing silently if required
+     DOM elements are missing.
+   - All other logic (selection, drop-targets, merge rules,
+     game-over evaluation, audio, Magic Mode) is unchanged.
    ============================================================ */
 
 /* ---------------- Constants ---------------- */
@@ -295,9 +296,9 @@ function updateDropTargets() {
   }
 }
 
-// NEW: highlights occupied cells as destroy targets while Magic Mode is
-// armed. Kept fully separate from updateDropTargets above so that function
-// never has to change.
+// Highlights occupied cells as destroy targets while Magic Mode is armed.
+// Kept fully separate from updateDropTargets above so that function never
+// has to change.
 function updateMagicTargets() {
   const cells = gridEl.children;
   const showTargets = state.magicModeActive && !state.gameOver;
@@ -433,8 +434,8 @@ function flashShake(index) {
 async function handleGridCellClick(index) {
   if (state.gameOver) return;
 
-  // NEW: Magic Mode branch. When armed, every grid tap destroys a gem
-  // instead of running the original placement flow below.
+  // Magic Mode branch. When armed, every grid tap destroys a gem instead
+  // of running the original placement flow below.
   if (state.magicModeActive) {
     await handleMagicDestroy(index);
     return;
@@ -662,4 +663,72 @@ async function handleWatchAd() {
 
 function activateMagicMode() {
   state.magicModeActive = true;
-  // Cancel any pe
+  // Cancel any pending placement selection so the two modes never collide.
+  state.selectedConveyorIndex = null;
+  renderConveyor();
+  updateDropTargets();
+  updateMagicTargets();
+  updateMagicModeUI();
+  showToast("Magic Mode: tap any gem on the grid to destroy it");
+}
+
+/* ---------------- Event wiring ---------------- */
+
+conveyorEl.addEventListener("click", (e) => {
+  const gemEl = e.target.closest(".gem");
+  if (!gemEl) return;
+  selectConveyorItem(parseInt(gemEl.dataset.conveyorIndex, 10));
+});
+
+gridEl.addEventListener("click", (e) => {
+  const cell = e.target.closest(".cell");
+  if (!cell) return;
+  handleGridCellClick(parseInt(cell.dataset.index, 10));
+});
+
+adButton.addEventListener("click", handleWatchAd);
+restartButton.addEventListener("click", restartGame);
+restartHeaderBtn.addEventListener("click", restartGame);
+
+/* ---------------- Init ---------------- */
+
+function init() {
+  // Defensive check: if index.html ids don't match these lookups, fail
+  // loudly in the console instead of silently doing nothing.
+  const requiredElements = {
+    gridEl, conveyorEl, floatingLayer, scoreValueEl, coinValueEl,
+    highscoreValueEl, adButton, toastContainer, gameOverOverlay,
+    finalScoreText, finalHighscoreText, restartButton, restartHeaderBtn
+  };
+  const missing = Object.entries(requiredElements)
+    .filter(([, el]) => !el)
+    .map(([name]) => name);
+
+  if (missing.length > 0) {
+    console.error(
+      "Gem Merge Rush: could not start — missing DOM elements:",
+      missing.join(", "),
+      ". Check that index.html ids match the ids used in script.js."
+    );
+    return;
+  }
+
+  loadPersisted();
+  buildGridDOM();
+  renderGrid();
+  renderConveyor();
+  updateScoreboard();
+  updateMagicModeUI();
+
+  spawnConveyorGem();
+  spawnIntervalHandle = setInterval(spawnConveyorGem, SPAWN_INTERVAL_MS);
+}
+
+// Runs init() safely whether the DOM is already parsed (e.g. this script
+// was loaded with the `defer` attribute, so document.readyState is already
+// past "loading") or not yet parsed (script loaded some other way).
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", init);
+} else {
+  init();
+}
