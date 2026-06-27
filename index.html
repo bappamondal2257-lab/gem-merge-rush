@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>Gem Merge Rush</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+
+  <header id="game-header">
+    <div id="title-row">
+      <h1 id="game-title">Gem Merge Rush</h1>
+      <button id="restart-header-btn" type="button" title="Start a new game">⟲ New</button>
+    </div>
+    <div id="stat-bar">
+      <div class="stat-pill" id="score-pill">
+        <span class="stat-label">Score</span>
+        <span class="stat-value" id="score-value">0</span>
+      </div>
+      <div class="stat-pill" id="coin-pill">
+        <span class="stat-label">🪙 Coins</span>
+        <span class="stat-value" id="coin-value">0</span>
+      </div>
+      <div class="stat-pill" id="highscore-pill">
+        <span class="stat-label">🏆 Best</span>
+        <span class="stat-value" id="highscore-value">0</span>
+      </div>
+    </div>
+  </header>
+
+  <main id="board-wrapper">
+    <div id="grid" aria-label="4 by 4 merge grid"></div>
+    <div id="floating-layer" aria-hidden="true"></div>
+  </main>
+
+  <footer id="conveyor-section">
+    <p id="conveyor-label">Tap a gem on the belt, then tap an empty cell to place it</p>
+    <div id="conveyor" aria-label="Gem conveyor belt"></div>
+    <button id="ad-button" type="button">▶ Watch Ad for Magic Gem 💎</button>
+  </footer>
+
+  <div id="toast-container" aria-live="polite"></div>
+
+  <div id="game-over-overlay" class="hidden">
+    <div id="game-over-card">
+      <h2>Game Over</h2>
+      <p id="game-over-sub">No merges left — the tray is full.</p>
+      <p id="final-score-text">Score: 0</p>
+      <p id="final-highscore-text">Best: 0</p>
+      <button id="restart-button" type="button">Restart</button>
+    </div>
+  </div>
+
+</div>
+<script src="script.js" defer></script>
+</body>
+</html>
