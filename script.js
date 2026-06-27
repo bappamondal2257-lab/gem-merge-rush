@@ -1,4 +1,4 @@
-/* Gem Merge Rush — Final Stable Script */
+/* Gem Merge Rush - Original Stable Core + Added Features */
 
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
@@ -38,12 +38,10 @@ const TOTAL_CELLS = 16;
 const CONVEYOR_MAX = 5;
 const SPAWN_INTERVAL_MS = 3000;
 const MAX_TIER = 7;
-const AD_COUNTDOWN_SECONDS = 3;
-const MAX_MAGIC_USES = 5;
 const STORAGE_KEYS = { highScore: "gmr_high_score", coins: "gmr_coins" };
 const GEM_SYMBOLS = { 1: "R", 2: "S", 3: "E", 4: "A", 5: "D", 6: "T", 7: "O" };
 
-const state = { grid: new Array(TOTAL_CELLS).fill(null), conveyor: [], selectedConveyorIndex: null, score: 0, coins: 0, highScore: 0, gameOver: false, magicUsesLeft: MAX_MAGIC_USES, isMagicMode: false };
+const state = { grid: new Array(TOTAL_CELLS).fill(null), conveyor: [], selectedConveyorIndex: null, score: 0, coins: 0, highScore: 0, gameOver: false, magicUsesLeft: 5, isMagicMode: false };
 
 let idCounter = 1, spawnIntervalHandle = null, adBusy = false;
 
@@ -63,15 +61,9 @@ function persist() {
   localStorage.setItem(STORAGE_KEYS.coins, state.coins);
 }
 
-function animateStat(element) {
-  element.classList.remove("pop-anim");
-  void element.offsetWidth; element.classList.add("pop-anim");
-}
-
 function updateScoreboard() {
-  if (scoreValueEl.textContent !== String(state.score)) { scoreValueEl.textContent = state.score; animateStat(scoreValueEl); }
-  if (coinValueEl.textContent !== String(state.coins)) { coinValueEl.textContent = state.coins; animateStat(coinValueEl); }
-  if (state.score > state.highScore) { state.highScore = state.score; persist(); }
+  scoreValueEl.textContent = state.score;
+  coinValueEl.textContent = state.coins;
   highscoreValueEl.textContent = state.highScore;
 }
 
@@ -89,22 +81,15 @@ function getMergeResultTier(gemA, gemB) {
   return gemA.tier + 1;
 }
 
-function createGemElement(gem) {
-  const el = document.createElement("div");
-  el.className = `gem tier-${gem.tier}`;
-  el.textContent = GEM_SYMBOLS[gem.tier] || "?";
-  return el;
-}
-
 function renderGrid() {
   for (let i = 0; i < TOTAL_CELLS; i++) {
     gridEl.children[i].innerHTML = "";
-    if (state.grid[i]) gridEl.children[i].appendChild(createGemElement(state.grid[i]));
-  }
-  const showDrop = state.selectedConveyorIndex !== null && !state.gameOver && !state.isMagicMode;
-  for (let i = 0; i < TOTAL_CELLS; i++) {
-    if (state.isMagicMode && state.grid[i] !== null) gridEl.children[i].classList.add("drop-target");
-    else gridEl.children[i].classList.toggle("drop-target", showDrop && state.grid[i] === null);
+    if (state.grid[i]) {
+      const el = document.createElement("div");
+      el.className = `gem tier-${state.grid[i].tier}`;
+      el.textContent = GEM_SYMBOLS[state.grid[i].tier] || "?";
+      gridEl.children[i].appendChild(el);
+    }
   }
 }
 
@@ -113,11 +98,13 @@ function renderConveyor() {
   for (let i = 0; i < CONVEYOR_MAX; i++) {
     const slot = document.createElement("div"); slot.className = "conveyor-slot";
     if (state.conveyor[i]) {
-      slot.classList.add("filled");
-      const gemEl = createGemElement(state.conveyor[i]);
-      gemEl.dataset.conveyorIndex = i;
-      if (state.selectedConveyorIndex === i) gemEl.classList.add("selected");
-      slot.appendChild(gemEl);
+      slot.className = "conveyor-slot filled";
+      const el = document.createElement("div");
+      el.className = `gem tier-${state.conveyor[i].tier}`;
+      el.textContent = GEM_SYMBOLS[state.conveyor[i].tier] || "?";
+      el.dataset.conveyorIndex = i;
+      if (state.selectedConveyorIndex === i) el.classList.add("selected");
+      slot.appendChild(el);
     }
     conveyorEl.appendChild(slot);
   }
@@ -178,20 +165,11 @@ function triggerGameOver() {
   gameOverOverlay.classList.remove("hidden");
 }
 
-async function handleWatchAd() {
-  if (state.gameOver || adBusy || state.magicUsesLeft <= 0 || state.isMagicMode) return;
-  adBusy = true; const original = adButton.textContent;
-  for (let s = AD_COUNTDOWN_SECONDS; s > 0; s--) { adButton.textContent = `▶ Ad playing... ${s}`; await delay(1000); }
-  state.isMagicMode = true; adButton.textContent = "Tap a gem to destroy!"; renderGrid(); adBusy = false;
-}
-
-// Initial setup
-loadPersisted(); updateScoreboard(); buildGridDOM();
-conveyorEl.addEventListener("click", (e) => { if (state.isMagicMode) return; const el = e.target.closest(".gem"); if (el) { state.selectedConveyorIndex = parseInt(el.dataset.conveyorIndex, 10); renderConveyor(); renderGrid(); } });
+loadPersisted(); updateScoreboard();
+gridEl.innerHTML = ""; for (let i = 0; i < TOTAL_CELLS; i++) { const c = document.createElement("div"); c.className = "cell"; c.dataset.index = i; gridEl.appendChild(c); }
 gridEl.addEventListener("click", (e) => { const cell = e.target.closest(".cell"); if (cell) handleGridCellClick(parseInt(cell.dataset.index, 10)); });
-adButton.addEventListener("click", handleWatchAd);
+conveyorEl.addEventListener("click", (e) => { const el = e.target.closest(".gem"); if (el) { state.selectedConveyorIndex = parseInt(el.dataset.conveyorIndex, 10); renderConveyor(); renderGrid(); } });
+adButton.addEventListener("click", async () => { if (state.magicUsesLeft > 0 && !state.isMagicMode) { state.isMagicMode = true; adButton.textContent = "Tap a gem to destroy!"; } });
 document.getElementById("restart-button").addEventListener("click", () => location.reload());
 document.getElementById("restart-header-btn").addEventListener("click", () => location.reload());
-renderGrid();
-spawnIntervalHandle = setInterval(() => { if (!state.gameOver && state.conveyor.length < CONVEYOR_MAX) { state.conveyor.push({ tier: randInt(1, 3), id: nextId() }); renderConveyor(); } }, SPAWN_INTERVAL_MS);
-    
+renderGrid(); spawnIntervalHandle = setInterval(() => { if (!state.gameOver && state.conveyor.length < CONVEYOR_MAX) { state.conveyor.push({ tier: randInt(1, 3), id: nextId() }); renderConveyor(); } }, SPAWN_INTERVAL_MS);
