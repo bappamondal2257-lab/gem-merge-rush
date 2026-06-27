@@ -1,8 +1,14 @@
 /* ============================================================
    Gem Merge Rush — style.css
    Theme: a jeweler's velvet tray. Deep violet-black velvet,
-   gold trim, octagon-cut gem facets, a literal moving belt
-   track under the conveyor.
+   gold trim, octagon-cut gem facets, a moving belt track.
+
+   Update notes (this revision):
+   - #conveyor::after belt animation sped up to match the faster spawn rate.
+   - Added: .pop-anim (stat pop), .gem.destroy-pop + sparkle particles
+     (Magic Gem destroy effect), .cell.magic-target (destroy highlight),
+     #grid.magic-mode and #ad-button.magic-armed (Magic Mode states).
+   - All original rules below are unchanged.
    ============================================================ */
 
 * { box-sizing: border-box; }
@@ -154,7 +160,11 @@ button {
   font-weight: 700;
   font-size: 1.15rem;
   color: var(--gold-bright);
+  display: inline-block;
 }
+
+/* NEW: pop animation for score/coins when they increase */
+.stat-value.pop-anim { animation: statPop 0.32s ease-out; }
 
 /* ---------- Board ---------- */
 
@@ -190,6 +200,16 @@ button {
     0 10px 34px rgba(0, 0, 0, 0.45),
     inset 0 0 18px rgba(0, 0, 0, 0.55),
     inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+  transition: box-shadow 0.25s ease;
+}
+
+/* NEW: global cue that Magic Mode is armed */
+#grid.magic-mode {
+  box-shadow:
+    0 10px 34px rgba(0, 0, 0, 0.45),
+    inset 0 0 18px rgba(0, 0, 0, 0.55),
+    inset 0 0 0 1px rgba(255, 93, 115, 0.55),
+    0 0 0 2px rgba(255, 93, 115, 0.6);
 }
 
 .cell {
@@ -206,6 +226,18 @@ button {
   background: rgba(230, 182, 92, 0.12);
   box-shadow: 0 0 0 2px var(--gold-bright) inset, 0 0 14px rgba(230, 182, 92, 0.5);
   cursor: pointer;
+}
+
+/* NEW: destroy-target highlight for Magic Mode, visually distinct (red)
+   from the gold drop-target highlight above. */
+.cell.magic-target {
+  background: rgba(255, 93, 115, 0.14);
+  box-shadow: 0 0 0 2px var(--danger) inset, 0 0 14px rgba(255, 93, 115, 0.55);
+  cursor: pointer;
+}
+
+.cell.magic-target .gem {
+  animation: magicTargetPulse 0.9s ease-in-out infinite;
 }
 
 .cell.shake { animation: shakeCell 0.32s ease; }
@@ -278,6 +310,10 @@ button {
 .gem.pop-out { animation: popOut 0.26s ease-in forwards; }
 .gem.placed { animation: placeIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1); }
 
+/* NEW: gem disintegration animation for Magic Gem destruction.
+   Kept separate from .pop-out so the merge animation is untouched. */
+.gem.destroy-pop { animation: destroyPop 0.32s ease-in forwards; }
+
 /* ---------- Conveyor ---------- */
 
 #conveyor-section {
@@ -323,7 +359,8 @@ button {
     rgba(120, 80, 30, 0.95) 10px 20px
   );
   background-size: 28px 100%;
-  animation: beltMove 1.3s linear infinite;
+  /* Sped up from 1.3s to match the faster gem spawn rate. */
+  animation: beltMove 0.8s linear infinite;
   box-shadow: 0 0 6px rgba(230, 182, 92, 0.5);
 }
 
@@ -361,6 +398,12 @@ button {
   box-shadow: none;
 }
 
+/* NEW: distinct "armed" styling while Magic Mode is waiting for a tap */
+#ad-button.magic-armed {
+  background: linear-gradient(135deg, var(--danger), #7b2ff7);
+  animation: magicArmedPulse 1s ease-in-out infinite;
+}
+
 /* ---------- Floating reward text ---------- */
 
 .floating-reward {
@@ -373,6 +416,20 @@ button {
   text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
   pointer-events: none;
   animation: floatUp 1s ease-out forwards;
+  z-index: 50;
+}
+
+/* NEW: sparkle/smoke particles for the Magic Gem destroy effect */
+.sparkle-particle {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0%, var(--gold-bright) 55%, transparent 100%);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  animation: sparkleBurst 0.5s ease-out forwards;
+  z-index: 45;
 }
 
 /* ---------- Toasts ---------- */
@@ -479,6 +536,41 @@ button {
   100% { transform: scale(1); opacity: 1; }
 }
 
+/* NEW: gem disintegration for Magic Gem destroy */
+@keyframes destroyPop {
+  0% { transform: scale(1) rotate(0deg); opacity: 1; filter: brightness(1); }
+  40% { transform: scale(1.15) rotate(-6deg); opacity: 0.85; filter: brightness(1.6); }
+  100% { transform: scale(0) rotate(12deg); opacity: 0; filter: brightness(2); }
+}
+
+/* NEW: outward sparkle/smoke burst */
+@keyframes sparkleBurst {
+  0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  100% {
+    transform: translate(calc(-50% + var(--sparkle-x)), calc(-50% + var(--sparkle-y))) scale(0.2);
+    opacity: 0;
+  }
+}
+
+/* NEW: pulsing glow for cells armed to be destroyed */
+@keyframes magicTargetPulse {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.25) saturate(1.3); }
+}
+
+/* NEW: pulsing glow for the ad button while Magic Mode is armed */
+@keyframes magicArmedPulse {
+  0%, 100% { box-shadow: 0 8px 18px rgba(123, 47, 247, 0.4); }
+  50% { box-shadow: 0 8px 26px rgba(255, 93, 115, 0.65); }
+}
+
+/* NEW: score/coin pop when a value increases */
+@keyframes statPop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.35); color: var(--gold-bright); }
+  100% { transform: scale(1); }
+}
+
 @keyframes wildShimmer {
   0% { background-position: 0% 50%; }
   100% { background-position: 200% 50%; }
@@ -517,21 +609,9 @@ button {
   to { background-position-x: -28px; }
 }
 
-/* ---------- Stats Pop Animation ---------- */
-@keyframes popScore {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.3); color: var(--gold-bright); }
-  100% { transform: scale(1); color: inherit; }
-}
-
-.pop-anim {
-  animation: popScore 0.3s ease-out;
-}
-
 /* ---------- Small phones ---------- */
 
 @media (max-width: 340px) {
   .conveyor-slot { width: 46px; height: 46px; }
   #game-title { font-size: 1.15rem; }
-   }
-              
+       }
